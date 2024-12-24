@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ export const MindMap = () => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Only start panning if clicking the background (not a node)
-    if ((e.target as HTMLElement).classList.contains('mindmap-container')) {
+    if (e.target === containerRef.current) {
       setIsPanning(true);
       lastMousePos.current = { x: e.clientX, y: e.clientY };
     }
@@ -72,16 +72,18 @@ export const MindMap = () => {
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden mindmap-container cursor-grab active:cursor-grabbing"
+      className="relative w-full h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden cursor-grab active:cursor-grabbing"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
       <div 
-        className="absolute inset-0"
         style={{
           transform: `translate(${offset.x}px, ${offset.y}px)`,
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
         }}
       >
         {nodes.map((node) => (
@@ -94,8 +96,12 @@ export const MindMap = () => {
               left: node.x,
               top: node.y,
               transform: "translate(-50%, -50%)",
+              pointerEvents: 'auto',
             }}
-            onClick={() => handleNodeClick(node.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNodeClick(node.id);
+            }}
           >
             <input
               type="text"
