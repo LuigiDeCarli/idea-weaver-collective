@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -15,6 +15,36 @@ export const MindMap = () => {
     { id: "root", text: "Central Topic", x: 400, y: 300 },
   ]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only start panning if clicking the background (not a node)
+    if ((e.target as HTMLElement).classList.contains('mindmap-container')) {
+      setIsPanning(true);
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const dx = e.clientX - lastMousePos.current.x;
+      const dy = e.clientY - lastMousePos.current.y;
+      
+      setOffset(prev => ({
+        x: prev.x + dx,
+        y: prev.y + dy
+      }));
+      
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
 
   const handleAddNode = () => {
     const newNode = {
@@ -40,7 +70,44 @@ export const MindMap = () => {
   };
 
   return (
-    <div className="relative w-full h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden">
+    <div 
+      ref={containerRef}
+      className="relative w-full h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden mindmap-container cursor-grab active:cursor-grabbing"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      <div 
+        className="absolute inset-0"
+        style={{
+          transform: `translate(${offset.x}px, ${offset.y}px)`,
+        }}
+      >
+        {nodes.map((node) => (
+          <div
+            key={node.id}
+            className={`absolute p-4 bg-white rounded-lg shadow-md cursor-move animate-scale-in
+              ${selectedNode === node.id ? "ring-2 ring-blue-500" : ""}
+            `}
+            style={{
+              left: node.x,
+              top: node.y,
+              transform: "translate(-50%, -50%)",
+            }}
+            onClick={() => handleNodeClick(node.id)}
+          >
+            <input
+              type="text"
+              value={node.text}
+              onChange={(e) => handleNodeTextChange(node.id, e.target.value)}
+              className="bg-transparent border-none focus:outline-none text-center w-full"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        ))}
+      </div>
+
       <div className="absolute bottom-6 right-6 flex gap-2">
         <Button
           onClick={handleAddNode}
@@ -49,29 +116,6 @@ export const MindMap = () => {
           <Plus className="h-6 w-6" />
         </Button>
       </div>
-      
-      {nodes.map((node) => (
-        <div
-          key={node.id}
-          className={`absolute p-4 bg-white rounded-lg shadow-md cursor-move animate-scale-in
-            ${selectedNode === node.id ? "ring-2 ring-blue-500" : ""}
-          `}
-          style={{
-            left: node.x,
-            top: node.y,
-            transform: "translate(-50%, -50%)",
-          }}
-          onClick={() => handleNodeClick(node.id)}
-        >
-          <input
-            type="text"
-            value={node.text}
-            onChange={(e) => handleNodeTextChange(node.id, e.target.value)}
-            className="bg-transparent border-none focus:outline-none text-center w-full"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      ))}
     </div>
   );
 };
