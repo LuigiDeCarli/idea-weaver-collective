@@ -28,13 +28,11 @@ export const useNodes = () => {
     const siblingCount = siblings.length;
 
     if (isChild) {
-      // Position child nodes to the right of parent
       return {
         x: parentNode.x + HORIZONTAL_SPACING,
         y: parentNode.y + (siblingCount * VERTICAL_SPACING)
       };
     } else {
-      // Position sibling nodes below the last sibling
       const lastSibling = siblings[siblingCount - 1];
       return {
         x: parentNode.x,
@@ -65,34 +63,20 @@ export const useNodes = () => {
     toast.success('New child topic added!');
   };
 
-  const addSiblingNode = (currentNodeId: string) => {
-    const currentNode = nodes.find(n => n.id === currentNodeId);
-    if (!currentNode || !currentNode.parentId) return;
-
-    const position = calculateNodePosition(currentNode.parentId, false);
-    const siblings = getChildNodes(currentNode.parentId);
-    
-    const newNode = {
-      id: `node-${Date.now()}`,
-      text: 'New Topic',
-      x: position.x,
-      y: position.y,
-      parentId: currentNode.parentId,
-      level: currentNode.level,
-      index: siblings.length
-    };
-
-    setNodes(prev => [...prev, newNode]);
-    setSelectedNode(newNode.id);
-    toast.success('New sibling topic added!');
+  const handleDragStart = (id: string, e: React.MouseEvent) => {
+    setDraggedNode(id);
   };
 
-  const updateNodePosition = (id: string, x: number, y: number) => {
-    setNodes(prevNodes => 
-      prevNodes.map(node => 
+  const handleDrag = (id: string, x: number, y: number) => {
+    setNodes(prevNodes =>
+      prevNodes.map(node =>
         node.id === id ? { ...node, x, y } : node
       )
     );
+  };
+
+  const handleDragEnd = () => {
+    setDraggedNode(null);
   };
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -103,9 +87,27 @@ export const useNodes = () => {
       addChildNode(selectedNode);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      addSiblingNode(selectedNode);
+      const currentNode = nodes.find(n => n.id === selectedNode);
+      if (currentNode?.parentId) {
+        const position = calculateNodePosition(currentNode.parentId, false);
+        const siblings = getChildNodes(currentNode.parentId);
+        
+        const newNode = {
+          id: `node-${Date.now()}`,
+          text: 'New Topic',
+          x: position.x,
+          y: position.y,
+          parentId: currentNode.parentId,
+          level: currentNode.level,
+          index: siblings.length
+        };
+
+        setNodes(prev => [...prev, newNode]);
+        setSelectedNode(newNode.id);
+        toast.success('New sibling topic added!');
+      }
     }
-  }, [selectedNode]);
+  }, [selectedNode, nodes]);
 
   const buildHierarchy = (parentId: string | null = null, level: number = 0): HierarchicalNode[] => {
     return nodes
@@ -125,9 +127,12 @@ export const useNodes = () => {
     draggedNode,
     setSelectedNode,
     setDraggedNode,
-    updateNodePosition,
+    updateNodePosition: handleDrag,
     addChildNode,
     handleKeyPress,
-    buildHierarchy
+    buildHierarchy,
+    handleDragStart,
+    handleDrag,
+    handleDragEnd
   };
 };

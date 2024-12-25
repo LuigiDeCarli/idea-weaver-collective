@@ -10,7 +10,8 @@ interface Props {
   onSelect: (id: string) => void;
   onTextChange: (id: string, text: string) => void;
   onAddChild: (id: string) => void;
-  onDragStart: (id: string) => void;
+  onDragStart: (id: string, e: React.MouseEvent) => void;
+  onDrag: (id: string, x: number, y: number) => void;
   onDragEnd: () => void;
 }
 
@@ -22,16 +23,12 @@ export const MindMapNode: React.FC<Props> = ({
   onTextChange,
   onAddChild,
   onDragStart,
+  onDrag,
   onDragEnd
 }) => {
-  const [position, setPosition] = useState({ x: node.x, y: node.y });
   const nodeRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    setPosition({ x: node.x, y: node.y });
-  }, [node.x, node.y]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -42,7 +39,7 @@ export const MindMapNode: React.FC<Props> = ({
         y: e.clientY - rect.top
       });
       setIsDragging(true);
-      onDragStart(node.id);
+      onDragStart(node.id, e);
     }
   };
 
@@ -50,10 +47,9 @@ export const MindMapNode: React.FC<Props> = ({
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
 
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
-      setPosition({ x: newX, y: newY });
-      onTextChange(node.id, node.text);
+      const x = e.clientX - dragOffset.x;
+      const y = e.clientY - dragOffset.y;
+      onDrag(node.id, x, y);
     };
 
     const handleMouseUp = () => {
@@ -64,15 +60,15 @@ export const MindMapNode: React.FC<Props> = ({
     };
 
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragOffset, node.id, node.text, onTextChange, onDragEnd]);
+  }, [isDragging, dragOffset, node.id, onDrag, onDragEnd]);
 
   return (
     <div
@@ -84,8 +80,8 @@ export const MindMapNode: React.FC<Props> = ({
         animate-scale-in
       `}
       style={{
-        left: position.x,
-        top: position.y,
+        left: node.x,
+        top: node.y,
         transform: "translate(-50%, -50%)",
         pointerEvents: 'auto',
       }}

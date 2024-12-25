@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { MindMapNode } from "./MindMapNode";
 import { MindMapConnections } from "./MindMapConnections";
 import { useViewport } from "./useViewport";
@@ -15,27 +15,21 @@ export const MindMap = () => {
     selectedNode,
     draggedNode,
     setSelectedNode,
-    setDraggedNode,
+    handleDragStart,
+    handleDrag,
+    handleDragEnd,
     updateNodePosition,
     addChildNode,
     handleKeyPress,
     buildHierarchy
   } = useNodes();
 
-  const [showHierarchy, setShowHierarchy] = useState(false);
+  const [showHierarchy, setShowHierarchy] = React.useState(false);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
-
-  const handleNodeDragStart = (id: string) => {
-    setDraggedNode(id);
-  };
-
-  const handleNodeDragEnd = () => {
-    setDraggedNode(null);
-  };
 
   const handleNodeTextChange = (id: string, text: string) => {
     const node = nodes.find(n => n.id === id);
@@ -73,8 +67,9 @@ export const MindMap = () => {
               onSelect={setSelectedNode}
               onTextChange={handleNodeTextChange}
               onAddChild={addChildNode}
-              onDragStart={handleNodeDragStart}
-              onDragEnd={handleNodeDragEnd}
+              onDragStart={handleDragStart}
+              onDrag={handleDrag}
+              onDragEnd={handleDragEnd}
             />
           ))}
         </div>
