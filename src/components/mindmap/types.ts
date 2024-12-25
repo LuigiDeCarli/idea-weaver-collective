@@ -4,7 +4,6 @@ export interface Node {
   x: number;
   y: number;
   parentId: string | null;
-  children?: string[];
   level: number;
 }
 
@@ -16,4 +15,9 @@ export interface Position {
 export interface ViewportState {
   offset: Position;
   scale: number;
+}
+
+export interface DragState {
+  isDragging: boolean;
+  offset: Position;
 }

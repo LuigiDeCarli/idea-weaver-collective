@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Node } from './types';
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -24,12 +24,55 @@ export const MindMapNode: React.FC<Props> = ({
   onDragStart,
   onDragEnd
 }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+
+      const x = e.clientX - dragOffset.x;
+      const y = e.clientY - dragOffset.y;
+      
+      // Update node position through parent component
+      onTextChange(node.id, node.text);
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        onDragEnd();
+      }
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset, node, onTextChange, onDragEnd]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - node.x,
+      y: e.clientY - node.y
+    });
+    onDragStart(node.id, e);
+  };
+
   return (
     <div
       className={`absolute p-4 bg-white rounded-lg shadow-md cursor-move
         ${isSelected ? "ring-2 ring-blue-500" : ""}
         ${isDragged ? "opacity-50" : ""}
         hover:shadow-lg transition-shadow duration-200
+        animate-scale-in
       `}
       style={{
         left: node.x,
@@ -37,11 +80,7 @@ export const MindMapNode: React.FC<Props> = ({
         transform: "translate(-50%, -50%)",
         pointerEvents: 'auto',
       }}
-      onMouseDown={(e) => {
-        e.stopPropagation();
-        onDragStart(node.id, e);
-      }}
-      onMouseUp={onDragEnd}
+      onMouseDown={handleMouseDown}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(node.id);
