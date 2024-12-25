@@ -1,22 +1,22 @@
 import { useState, useCallback } from 'react';
-import { Node } from './types';
+import { Node, HierarchicalNode } from './types';
 import { toast } from 'sonner';
 
 const HORIZONTAL_SPACING = 200;
-const VERTICAL_SPACING = 100;
+const VERTICAL_SPACING = 80;
 
 export const useNodes = () => {
   const [nodes, setNodes] = useState<Node[]>([
-    { id: 'root', text: 'Central Topic', x: 400, y: 300, parentId: null, level: 0 }
+    { id: 'root', text: 'Central Topic', x: 400, y: 300, parentId: null, level: 0, index: 0 }
   ]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
 
-  const getChildNodes = (parentId: string) => {
+  const getChildNodes = (parentId: string | null) => {
     return nodes.filter(node => node.parentId === parentId);
   };
 
-  const calculateNodePosition = (parentId: string | null, isSibling: boolean) => {
+  const calculateNodePosition = (parentId: string | null, isChild: boolean) => {
     if (!parentId) {
       return { x: 400, y: 300 };
     }
@@ -25,49 +25,39 @@ export const useNodes = () => {
     if (!parentNode) return { x: 400, y: 300 };
 
     const siblings = getChildNodes(parentId);
-    
-    if (isSibling && parentNode.parentId !== null) {
-      // For sibling nodes (same level as current node)
-      const parentSiblings = getChildNodes(parentNode.parentId);
-      return {
-        x: parentNode.x,
-        y: parentNode.y + VERTICAL_SPACING * (parentSiblings.length + 1)
-      };
-    } else {
-      // For child nodes (one level deeper)
+    const siblingCount = siblings.length;
+
+    if (isChild) {
+      // Position child nodes to the right of parent
       return {
         x: parentNode.x + HORIZONTAL_SPACING,
-        y: siblings.length > 0 
-          ? siblings[siblings.length - 1].y + VERTICAL_SPACING
-          : parentNode.y
+        y: parentNode.y + (siblingCount * VERTICAL_SPACING)
+      };
+    } else {
+      // Position sibling nodes below the last sibling
+      const lastSibling = siblings[siblingCount - 1];
+      return {
+        x: parentNode.x,
+        y: lastSibling ? lastSibling.y + VERTICAL_SPACING : parentNode.y + VERTICAL_SPACING
       };
     }
-  };
-
-  const updateNodePosition = (id: string, x: number, y: number) => {
-    setNodes(prevNodes => {
-      const updatedNodes = prevNodes.map(node => {
-        if (node.id === id) {
-          return { ...node, x, y };
-        }
-        return node;
-      });
-      return updatedNodes;
-    });
   };
 
   const addChildNode = (parentId: string) => {
     const parentNode = nodes.find(n => n.id === parentId);
     if (!parentNode) return;
 
-    const position = calculateNodePosition(parentId, false);
+    const position = calculateNodePosition(parentId, true);
+    const siblings = getChildNodes(parentId);
+    
     const newNode = {
       id: `node-${Date.now()}`,
       text: 'New Topic',
       x: position.x,
       y: position.y,
       parentId: parentId,
-      level: parentNode.level + 1
+      level: parentNode.level + 1,
+      index: siblings.length
     };
 
     setNodes(prev => [...prev, newNode]);
@@ -77,21 +67,32 @@ export const useNodes = () => {
 
   const addSiblingNode = (currentNodeId: string) => {
     const currentNode = nodes.find(n => n.id === currentNodeId);
-    if (!currentNode) return;
+    if (!currentNode || !currentNode.parentId) return;
 
-    const position = calculateNodePosition(currentNode.parentId, true);
+    const position = calculateNodePosition(currentNode.parentId, false);
+    const siblings = getChildNodes(currentNode.parentId);
+    
     const newNode = {
       id: `node-${Date.now()}`,
       text: 'New Topic',
       x: position.x,
       y: position.y,
       parentId: currentNode.parentId,
-      level: currentNode.level
+      level: currentNode.level,
+      index: siblings.length
     };
 
     setNodes(prev => [...prev, newNode]);
     setSelectedNode(newNode.id);
     toast.success('New sibling topic added!');
+  };
+
+  const updateNodePosition = (id: string, x: number, y: number) => {
+    setNodes(prevNodes => 
+      prevNodes.map(node => 
+        node.id === id ? { ...node, x, y } : node
+      )
+    );
   };
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -106,6 +107,18 @@ export const useNodes = () => {
     }
   }, [selectedNode]);
 
+  const buildHierarchy = (parentId: string | null = null, level: number = 0): HierarchicalNode[] => {
+    return nodes
+      .filter(node => node.parentId === parentId)
+      .sort((a, b) => (a.index || 0) - (b.index || 0))
+      .map(node => ({
+        id: node.id,
+        text: node.text,
+        level,
+        children: buildHierarchy(node.id, level + 1)
+      }));
+  };
+
   return {
     nodes,
     selectedNode,
@@ -114,6 +127,7 @@ export const useNodes = () => {
     setDraggedNode,
     updateNodePosition,
     addChildNode,
-    handleKeyPress
+    handleKeyPress,
+    buildHierarchy
   };
 };

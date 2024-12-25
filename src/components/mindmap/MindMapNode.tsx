@@ -10,7 +10,7 @@ interface Props {
   onSelect: (id: string) => void;
   onTextChange: (id: string, text: string) => void;
   onAddChild: (id: string) => void;
-  onDragStart: (id: string, e: React.MouseEvent) => void;
+  onDragStart: (id: string) => void;
   onDragEnd: () => void;
 }
 
@@ -42,7 +42,7 @@ export const MindMapNode: React.FC<Props> = ({
         y: e.clientY - rect.top
       });
       setIsDragging(true);
-      onDragStart(node.id, e);
+      onDragStart(node.id);
     }
   };
 

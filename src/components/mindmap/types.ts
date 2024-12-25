@@ -5,6 +5,7 @@ export interface Node {
   y: number;
   parentId: string | null;
   level: number;
+  index?: number;
 }
 
 export interface Position {
@@ -20,4 +21,11 @@ export interface ViewportState {
 export interface DragState {
   isDragging: boolean;
   offset: Position;
+}
+
+export interface HierarchicalNode {
+  id: string;
+  text: string;
+  level: number;
+  children: HierarchicalNode[];
 }
