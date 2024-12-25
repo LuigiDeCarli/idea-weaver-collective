@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Node } from './types';
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -24,17 +24,35 @@ export const MindMapNode: React.FC<Props> = ({
   onDragStart,
   onDragEnd
 }) => {
+  const [position, setPosition] = useState({ x: node.x, y: node.y });
+  const nodeRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    setPosition({ x: node.x, y: node.y });
+  }, [node.x, node.y]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (nodeRef.current) {
+      const rect = nodeRef.current.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+      setIsDragging(true);
+      onDragStart(node.id, e);
+    }
+  };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
 
-      const x = e.clientX - dragOffset.x;
-      const y = e.clientY - dragOffset.y;
-      
-      // Update node position through parent component
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      setPosition({ x: newX, y: newY });
       onTextChange(node.id, node.text);
     };
 
@@ -54,20 +72,11 @@ export const MindMapNode: React.FC<Props> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragOffset, node, onTextChange, onDragEnd]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - node.x,
-      y: e.clientY - node.y
-    });
-    onDragStart(node.id, e);
-  };
+  }, [isDragging, dragOffset, node.id, node.text, onTextChange, onDragEnd]);
 
   return (
     <div
+      ref={nodeRef}
       className={`absolute p-4 bg-white rounded-lg shadow-md cursor-move
         ${isSelected ? "ring-2 ring-blue-500" : ""}
         ${isDragged ? "opacity-50" : ""}
@@ -75,8 +84,8 @@ export const MindMapNode: React.FC<Props> = ({
         animate-scale-in
       `}
       style={{
-        left: node.x,
-        top: node.y,
+        left: position.x,
+        top: position.y,
         transform: "translate(-50%, -50%)",
         pointerEvents: 'auto',
       }}

@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react';
 import { Node } from './types';
 import { toast } from 'sonner';
 
-const HORIZONTAL_SPACING = 200; // Space between parent and child
-const VERTICAL_SPACING = 100;   // Space between siblings
+const HORIZONTAL_SPACING = 200;
+const VERTICAL_SPACING = 100;
 
 export const useNodes = () => {
   const [nodes, setNodes] = useState<Node[]>([
@@ -16,45 +16,42 @@ export const useNodes = () => {
     return nodes.filter(node => node.parentId === parentId);
   };
 
-  const calculateNewNodePosition = (parentId: string | null, isSibling: boolean) => {
-    if (isSibling && parentId) {
-      // For sibling nodes, align vertically with existing siblings
-      const siblings = getChildNodes(parentId);
-      const parentNode = nodes.find(n => n.id === parentId);
-      if (!parentNode) return { x: 0, y: 0 };
-
-      const lastSibling = siblings[siblings.length - 1];
-      return {
-        x: parentNode.x + HORIZONTAL_SPACING,
-        y: lastSibling ? lastSibling.y + VERTICAL_SPACING : parentNode.y
-      };
-    } else if (!isSibling) {
-      // For child nodes, position to the right of parent
-      const parent = nodes.find(n => n.id === parentId);
-      if (!parent) return { x: 0, y: 0 };
-
-      const existingChildren = getChildNodes(parent.id);
-      return {
-        x: parent.x + HORIZONTAL_SPACING,
-        y: existingChildren.length > 0 
-          ? existingChildren[existingChildren.length - 1].y + VERTICAL_SPACING 
-          : parent.y
-      };
+  const calculateNodePosition = (parentId: string | null, isSibling: boolean) => {
+    if (!parentId) {
+      return { x: 400, y: 300 };
     }
 
-    // Default position for root nodes
-    return { x: 400, y: 300 };
+    const parentNode = nodes.find(n => n.id === parentId);
+    if (!parentNode) return { x: 400, y: 300 };
+
+    const siblings = getChildNodes(parentId);
+    
+    if (isSibling && parentNode.parentId !== null) {
+      // For sibling nodes (same level as current node)
+      const parentSiblings = getChildNodes(parentNode.parentId);
+      return {
+        x: parentNode.x,
+        y: parentNode.y + VERTICAL_SPACING * (parentSiblings.length + 1)
+      };
+    } else {
+      // For child nodes (one level deeper)
+      return {
+        x: parentNode.x + HORIZONTAL_SPACING,
+        y: siblings.length > 0 
+          ? siblings[siblings.length - 1].y + VERTICAL_SPACING
+          : parentNode.y
+      };
+    }
   };
 
   const updateNodePosition = (id: string, x: number, y: number) => {
     setNodes(prevNodes => {
-      const updatedNodes = [...prevNodes];
-      const nodeIndex = updatedNodes.findIndex(n => n.id === id);
-      if (nodeIndex === -1) return prevNodes;
-
-      // Update the dragged node position
-      updatedNodes[nodeIndex] = { ...updatedNodes[nodeIndex], x, y };
-
+      const updatedNodes = prevNodes.map(node => {
+        if (node.id === id) {
+          return { ...node, x, y };
+        }
+        return node;
+      });
       return updatedNodes;
     });
   };
@@ -63,10 +60,10 @@ export const useNodes = () => {
     const parentNode = nodes.find(n => n.id === parentId);
     if (!parentNode) return;
 
-    const position = calculateNewNodePosition(parentId, false);
+    const position = calculateNodePosition(parentId, false);
     const newNode = {
       id: `node-${Date.now()}`,
-      text: 'New Branch',
+      text: 'New Topic',
       x: position.x,
       y: position.y,
       parentId: parentId,
@@ -75,17 +72,17 @@ export const useNodes = () => {
 
     setNodes(prev => [...prev, newNode]);
     setSelectedNode(newNode.id);
-    toast.success('New branch added!');
+    toast.success('New child topic added!');
   };
 
   const addSiblingNode = (currentNodeId: string) => {
     const currentNode = nodes.find(n => n.id === currentNodeId);
     if (!currentNode) return;
 
-    const position = calculateNewNodePosition(currentNode.parentId, true);
+    const position = calculateNodePosition(currentNode.parentId, true);
     const newNode = {
       id: `node-${Date.now()}`,
-      text: 'New Branch',
+      text: 'New Topic',
       x: position.x,
       y: position.y,
       parentId: currentNode.parentId,
@@ -94,7 +91,7 @@ export const useNodes = () => {
 
     setNodes(prev => [...prev, newNode]);
     setSelectedNode(newNode.id);
-    toast.success('New sibling added!');
+    toast.success('New sibling topic added!');
   };
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -107,7 +104,7 @@ export const useNodes = () => {
       e.preventDefault();
       addSiblingNode(selectedNode);
     }
-  }, [selectedNode, nodes]);
+  }, [selectedNode]);
 
   return {
     nodes,
